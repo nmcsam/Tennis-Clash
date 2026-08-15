@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F2B36">
+<title>Bảng chỉ số — Tennis Clash</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --court:#0F2B36;
+  --court2:#17414F;
+  --panel:#143A47;
+  --chalk:#F1EFE3;
+  --optic:#D7F24B;
+  --muted:#7FA0AC;
+  --line:rgba(241,239,227,.16);
+  --warn:#E8574A;
+  --row:42px;
+  --pad:14px;
+  --disp:"Roboto Condensed","Arial Narrow",Roboto,system-ui,sans-serif;
+  --body:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --num:ui-monospace,"Roboto Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--court);
+  color:var(--chalk);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.4;
+  padding-bottom:36px;
+  overscroll-behavior-y:none;
+}
+button,input,select{font:inherit;color:inherit}
+
+/* ---------- header : scoreboard ---------- */
+header{
+  padding:calc(env(safe-area-inset-top) + 16px) var(--pad) 12px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,var(--court2),var(--court));
+}
+h1{
+  font-family:var(--disp);
+  font-size:26px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin:0;
+  line-height:1;
+}
+.sub{
+  font-family:var(--disp);
+  font-size:12px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+/* ---------- tabs : equal width, equal height ---------- */
+nav{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border-bottom:1px solid var(--line);
+  background:var(--court);
+  position:sticky;top:0;z-index:20;
+}
+nav button{
+  height:var(--row);
+  background:none;border:0;
+  border-bottom:2px solid transparent;
+  font-family:var(--disp);
+  font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);
+  cursor:pointer;
+}
+nav button[aria-selected="true"]{color:var(--optic);border-bottom-color:var(--optic)}
+nav button:focus-visible{outline:2px solid var(--optic);outline-offset:-4px}
+
+main{padding:var(--pad)}
+.page{display:none}
+.page.on{display:block}
+
+.eyebrow{
+  font-family:var(--disp);
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--muted);
+  margin:20px 0 8px;
+  display:flex;align-items:center;gap:10px;
+}
+.eyebrow:first-child{margin-top:0}
+.eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---------- slot rows : every row exactly --row tall ---------- */
+.slot{
+  display:grid;
+  grid-template-columns:96px 1fr;
+  align-items:stretch;
+  height:var(--row);
+  margin-bottom:6px;
+}
+.slot label{
+  height:var(--row);
+  display:flex;align-items:center;
+  font-family:var(--disp);
+  font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);
+  white-space:nowrap;
+  padding-right:10px;
+}
+.slot select{
+  height:var(--row);
+  width:100%;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:2px;
+  padding:0 10px;
+  appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 19px,calc(100% - 11px) 19px;
+  background-size:5px 5px,5px 5px;
+  background-repeat:no-repeat;
+}
+select:focus-visible,input:focus-visible{outline:2px solid var(--optic);outline-offset:-2px}
+
+/* ---------- stat readout : the signature ---------- */
+.stat{
+  display:grid;
+  grid-template-columns:96px 1fr 62px;
+  align-items:center;
+  height:var(--row);
+  gap:10px;
+  border-bottom:1px solid var(--line);
+}
+.stat .nm{
+  font-family:var(--disp);
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.track{
+  position:relative;
+  height:14px;
+  background:rgba(241,239,227,.07);
+  border-radius:1px;
+  overflow:visible;
+}
+.fill{
+  position:absolute;left:0;top:0;bottom:0;
+  background:var(--chalk);
+  border-radius:1px;
+  transition:width .35s cubic-bezier(.2,.7,.2,1);
+}
+.stat.peak .fill{background:var(--optic)}
+.ghost{
+  position:absolute;top:-3px;bottom:-3px;left:0;
+  border:1px dashed rgba(241,239,227,.45);
+  border-left:0;
+  border-radius:1px;
+  transition:width .35s cubic-bezier(.2,.7,.2,1);
+  pointer-events:none;
+}
+.val{
+  font-family:var(--num);
+  font-size:16px;
+  font-variant-numeric:tabular-nums;
+  text-align:right;
+  white-space:nowrap;
+}
+.dv{font-family:var(--num);font-size:11px;color:var(--muted);display:block;line-height:1}
+.dv.up{color:var(--optic)}
+.dv.dn{color:var(--warn)}
+
+/* ---------- summary chips : equal size ---------- */
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.chip{
+  height:66px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:2px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+}
+.chip b{font-family:var(--num);font-size:20px;font-variant-numeric:tabular-nums;font-weight:500}
+.chip span{font-family:var(--disp);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+.note{
+  font-size:13px;color:var(--muted);
+  border-left:2px solid var(--optic);
+  padding:8px 0 8px 12px;
+  margin:16px 0 0;
+}
+
+/* ---------- buttons ---------- */
+.btn{
+  height:var(--row);
+  width:100%;
+  background:none;
+  border:1px solid var(--line);
+  border-radius:2px;
+  font-family:var(--disp);
+  font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--chalk);
+  cursor:pointer;
+}
+.btn.solid{background:var(--optic);border-color:var(--optic);color:#12303B;font-weight:700}
+.btn.sm{height:34px;font-size:11px}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+
+/* ---------- gear tab ---------- */
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:14px}
+.strip button{
+  height:34px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:2px;
+  font-family:var(--disp);
+  font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);cursor:pointer;
+  padding:0 2px;
+}
+.strip button[aria-selected="true"]{background:var(--optic);border-color:var(--optic);color:#12303B;font-weight:700}
+
+.item{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:2px;
+  padding:10px;
+  margin-bottom:10px;
+}
+.item .top{display:grid;grid-template-columns:1fr 62px 40px;gap:6px;height:36px;margin-bottom:8px}
+.item .top input,.item .top button{height:36px;border-radius:2px;border:1px solid var(--line);background:rgba(0,0,0,.18);padding:0 8px;width:100%}
+.item .top .lv{font-family:var(--num);text-align:center}
+.item .top button{background:none;border-color:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cell{height:52px;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:2px;display:flex;flex-direction:column;justify-content:center;padding:0 8px}
+.cell span{font-family:var(--disp);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.cell input{width:100%;background:none;border:0;padding:0;font-family:var(--num);font-size:17px;font-variant-numeric:tabular-nums}
+
+/* ---------- compare ---------- */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:320px}
+th,td{
+  height:var(--row);
+  padding:0 8px;
+  border-bottom:1px solid var(--line);
+  text-align:right;
+  font-family:var(--num);
+  font-size:15px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+th{
+  font-family:var(--disp);
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:400;
+}
+th:first-child,td:first-child{
+  text-align:left;
+  position:sticky;left:0;
+  background:var(--court);
+  font-family:var(--disp);
+  font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);
+}
+td.best{color:var(--optic)}
+tr.tot td,tr.tot th{border-bottom:0;font-weight:700}
+
+.empty{
+  border:1px dashed var(--line);
+  border-radius:2px;
+  padding:24px 16px;
+  text-align:center;
+  color:var(--muted);
+  font-size:14px;
+}
+.saved{display:grid;grid-template-columns:1fr 74px 40px;gap:6px;align-items:center;height:38px;margin-bottom:6px}
+.saved .nmb{font-family:var(--disp);font-size:13px;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.saved button{height:38px;border-radius:2px;border:1px solid var(--line);background:none;color:var(--muted);font-family:var(--disp);font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.saved button.on{background:var(--optic);border-color:var(--optic);color:#12303B;font-weight:700}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Bảng chỉ số</h1>
+  <div class="sub">Tennis Clash · tính build gear</div>
+</header>
+
+<nav role="tablist">
+  <button role="tab" data-p="build" aria-selected="true">Sân đấu</button>
+  <button role="tab" data-p="gear" aria-selected="false">Kho đồ</button>
+  <button role="tab" data-p="cmp" aria-selected="false">Đối chiếu</button>
+</nav>
+
+<main>
+
+  <!-- ============ SÂN ĐẤU ============ -->
+  <section class="page on" id="p-build">
+    <div class="eyebrow">Đội hình</div>
+    <div id="slots"></div>
+
+    <div class="eyebrow">Tổng chỉ số</div>
+    <div id="stats"></div>
+
+    <div class="chips">
+      <div class="chip"><b id="cPow">0</b><span>Lực đánh</span></div>
+      <div class="chip"><b id="cSta">0</b><span>Thể lực</span></div>
+      <div class="chip"><b id="cSum">0</b><span>Tổng điểm</span></div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn" id="bReset">Bỏ chọn</button>
+      <button class="btn solid" id="bSave">Lưu build</button>
+    </div>
+
+    <p class="note" id="benchNote">Chọn một build làm mốc ở tab Đối chiếu — vạch nét đứt sẽ hiện lên từng thanh để so.</p>
+  </section>
+
+  <!-- ============ KHO ĐỒ ============ -->
+  <section class="page" id="p-gear">
+    <div class="strip" id="strip"></div>
+    <div id="items"></div>
+    <button class="btn" id="bAdd">+ Thêm món</button>
+    <p class="note">Chỉ số thay đổi theo cấp nâng, nên nhập trực tiếp con số hiện trên món đồ trong game. Sửa cấp thì sửa lại số ở đây.</p>
+  </section>
+
+  <!-- ============ ĐỐI CHIẾU ============ -->
+  <section class="page" id="p-cmp">
+    <div class="eyebrow">Build đã lưu</div>
+    <div id="savedList"></div>
+    <div class="eyebrow">Bảng so</div>
+    <div class="scroll"><table id="cmpTable"></table></div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ---------- storage: localStorage nếu có, không thì giữ trong phiên ---------- */
+var store = (function(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return localStorage; }
+  catch(e){
+    var m = {};
+    return { getItem:function(k){ return k in m ? m[k] : null; },
+             setItem:function(k,v){ m[k] = String(v); },
+             removeItem:function(k){ delete m[k]; } };
+  }
+})();
+
+var KEY = "tcgear.v1";
+
+var STATS = [
+  {k:"agi", n:"Nhanh nhẹn"},
+  {k:"sta", n:"Thể lực"},
+  {k:"ser", n:"Giao bóng"},
+  {k:"vol", n:"Vô-lê"},
+  {k:"fh",  n:"Thuận tay"},
+  {k:"bh",  n:"Trái tay"}
+];
+
+var SLOTS = [
+  {k:"racquet", n:"Vợt",    s:"Vợt"},
+  {k:"grip",    n:"Cán",    s:"Cán"},
+  {k:"shoes",   n:"Giày",   s:"Giày"},
+  {k:"band",    n:"Băng tay", s:"Băng"},
+  {k:"nutri",   n:"Dinh dưỡng", s:"D.Dưỡng"}
+];
+
+function zero(){ return {agi:0,sta:0,ser:0,vol:0,fh:0,bh:0}; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function seed(){
+  var g = {};
+  SLOTS.forEach(function(s){
+    g[s.k] = [{ id:uid(), name:s.n + " hiện tại", lv:1, st:zero() }];
+  });
+  return {
+    chars:[{ id:uid(), name:"Nhân vật hiện tại", st:zero() }],
+    gear:g,
+    pick:{ char:null, racquet:null, grip:null, shoes:null, band:null, nutri:null },
+    builds:[],
+    bench:null
+  };
+}
+
+var S;
+try{
+  S = JSON.parse(store.getItem(KEY));
+  if(!S || !S.gear || !S.chars) S = seed();
+}catch(e){ S = seed(); }
+
+/* điền sẵn lựa chọn đầu tiên */
+if(!S.pick.char && S.chars[0]) S.pick.char = S.chars[0].id;
+SLOTS.forEach(function(s){
+  if(!S.pick[s.k] && S.gear[s.k] && S.gear[s.k][0]) S.pick[s.k] = S.gear[s.k][0].id;
+});
+
+function save(){ store.setItem(KEY, JSON.stringify(S)); }
+
+function num(v){ var n = parseInt(v,10); return isNaN(n) ? 0 : n; }
+function byId(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return arr[i]; return null; }
+
+/* ---------- tính tổng ---------- */
+function totalOf(pick){
+  var t = zero();
+  var c = byId(S.chars, pick.char);
+  if(c) STATS.forEach(function(s){ t[s.k] += num(c.st[s.k]); });
+  SLOTS.forEach(function(sl){
+    var it = byId(S.gear[sl.k] || [], pick[sl.k]);
+    if(it) STATS.forEach(function(s){ t[s.k] += num(it.st[s.k]); });
+  });
+  return t;
+}
+function sumOf(t){ var n=0; STATS.forEach(function(s){ n += t[s.k]; }); return n; }
+function powerOf(t){ return Math.round((t.fh + t.bh) / 2); }
+
+/* ---------- tab ---------- */
+var tabs = document.querySelectorAll("nav button");
+Array.prototype.forEach.call(tabs, function(b){
+  b.addEventListener("click", function(){
+    Array.prototype.forEach.call(tabs, function(x){ x.setAttribute("aria-selected", x===b ? "true":"false"); });
+    document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("on"); });
+    document.getElementById("p" + "-" + b.dataset.p).classList.add("on");
+    if(b.dataset.p === "cmp") renderCmp();
+    if(b.dataset.p === "gear") renderGear();
+  });
+});
+
+/* ---------- SÂN ĐẤU ---------- */
+function renderSlots(){
+  var h = "";
+  h += '<div class="slot"><label>Nhân vật</label><select data-slot="char">' + opts(S.chars, S.pick.char) + "</select></div>";
+  SLOTS.forEach(function(sl){
+    h += '<div class="slot"><label>' + sl.n + '</label><select data-slot="' + sl.k + '">' + opts(S.gear[sl.k] || [], S.pick[sl.k]) + "</select></div>";
+  });
+  var el = document.getElementById("slots");
+  el.innerHTML = h;
+  el.querySelectorAll("select").forEach(function(sel){
+    sel.addEventListener("change", function(){
+      S.pick[sel.dataset.slot] = sel.value || null;
+      save(); renderStats();
+    });
+  });
+}
+function opts(list, cur){
+  var h = '<option value="">— trống —</option>';
+  list.forEach(function(it){
+    h += '<option value="' + it.id + '"' + (it.id===cur ? " selected":"") + ">" + esc(it.name) + "</option>";
+  });
+  return h;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+function renderStats(){
+  var t = totalOf(S.pick);
+  var bench = S.bench ? byId(S.builds, S.bench) : null;
+  var bt = bench ? bench.total : null;
+
+  var max = 0;
+  STATS.forEach(function(s){
+    if(t[s.k] > max) max = t[s.k];
+    if(bt && bt[s.k] > max) max = bt[s.k];
+  });
+  if(max < 10) max = 10;
+
+  var peak = 0;
+  STATS.forEach(function(s){ if(t[s.k] > peak) peak = t[s.k]; });
+
+  var h = "";
+  STATS.forEach(function(s){
+    var v = t[s.k];
+    var w = Math.round(v / max * 100);
+    var gw = bt ? Math.round(bt[s.k] / max * 100) : 0;
+    var d = bt ? v - bt[s.k] : 0;
+    h += '<div class="stat' + (v===peak && peak>0 ? " peak" : "") + '">'
+       +   '<div class="nm">' + s.n + "</div>"
+       +   '<div class="track">'
+       +     (bt ? '<div class="ghost" style="width:' + gw + '%"></div>' : "")
+       +     '<div class="fill" style="width:' + w + '%"></div>'
+       +   "</div>"
+       +   '<div class="val">' + v
+       +     (bt ? '<i class="dv ' + (d>0?"up":d<0?"dn":"") + '">' + (d>0?"+":"") + d + "</i>" : "")
+       +   "</div>"
+       + "</div>";
+  });
+  document.getElementById("stats").innerHTML = h;
+
+  document.getElementById("cPow").textContent = powerOf(t);
+  document.getElementById("cSta").textContent = t.sta;
+  document.getElementById("cSum").textContent = sumOf(t);
+
+  document.getElementById("benchNote").textContent = bench
+    ? "Đang so với mốc: " + bench.name + ". Nét đứt là build mốc."
+    : "Chọn một build làm mốc ở tab Đối chiếu — vạch nét đứt sẽ hiện lên từng thanh để so.";
+}
+
+document.getElementById("bReset").addEventListener("click", function(){
+  S.pick = { char:null, racquet:null, grip:null, shoes:null, band:null, nutri:null };
+  save(); renderSlots(); renderStats();
+});
+
+document.getElementById("bSave").addEventListener("click", function(){
+  var def = "Build " + (S.builds.length + 1);
+  var nm = prompt("Tên build:", def);
+  if(nm === null) return;
+  S.builds.push({
+    id: uid(),
+    name: nm.trim() || def,
+    pick: JSON.parse(JSON.stringify(S.pick)),
+    total: totalOf(S.pick)
+  });
+  save();
+  alert("Đã lưu. Xem ở tab Đối chiếu.");
+});
+
+/* ---------- KHO ĐỒ ---------- */
+var curSlot = "racquet";
+
+function renderStrip(){
+  var h = "";
+  SLOTS.forEach(function(sl){
+    h += '<button data-k="' + sl.k + '" aria-selected="' + (sl.k===curSlot) + '">' + sl.s + "</button>";
+  });
+  var el = document.getElementById("strip");
+  el.innerHTML = h;
+  el.querySelectorAll("button").forEach(function(b){
+    b.addEventListener("click", function(){ curSlot = b.dataset.k; renderGear(); });
+  });
+}
+
+function renderGear(){
+  renderStrip();
+  var list = S.gear[curSlot] || [];
+  var box = document.getElementById("items");
+  if(!list.length){
+    box.innerHTML = '<div class="empty">Chưa có món nào ở ô này. Bấm “Thêm món” rồi nhập chỉ số từ game.</div>';
+    return;
+  }
+  var h = "";
+  list.forEach(function(it){
+    h += '<div class="item" data-id="' + it.id + '">'
+       +   '<div class="top">'
+       +     '<input class="nm" value="' + esc(it.name) + '" placeholder="Tên món">'
+       +     '<input class="lv" inputmode="numeric" value="' + num(it.lv) + '" placeholder="Cấp">'
+       +     '<button class="del" title="Xoá">×</button>'
+       +   "</div>"
+       +   '<div class="grid6">';
+    STATS.forEach(function(s){
+      h += '<div class="cell"><span>' + s.n + '</span>'
+         +   '<input data-s="' + s.k + '" inputmode="numeric" value="' + num(it.st[s.k]) + '"></div>';
+    });
+    h += "</div></div>";
+  });
+  box.innerHTML = h;
+
+  box.querySelectorAll(".item").forEach(function(card){
+    var it = byId(S.gear[curSlot], card.dataset.id);
+    if(!it) return;
+    card.querySelector(".nm").addEventListener("input", function(e){
+      it.name = e.target.value; save(); renderSlots();
+    });
+    card.querySelector(".lv").addEventListener("input", function(e){
+      it.lv = num(e.target.value); save();
+    });
+    card.querySelectorAll(".cell input").forEach(function(inp){
+      inp.addEventListener("input", function(){
+        it.st[inp.dataset.s] = num(inp.value); save(); renderStats();
+      });
+    });
+    card.querySelector(".del").addEventListener("click", function(){
+      if(!confirm("Xoá “" + it.name + "”?")) return;
+      S.gear[curSlot] = S.gear[curSlot].filter(function(x){ return x.id !== it.id; });
+      if(S.pick[curSlot] === it.id) S.pick[curSlot] = null;
+      save(); renderGear(); renderSlots(); renderStats();
+    });
+  });
+}
+
+document.getElementById("bAdd").addEventListener("click", function(){
+  var sl = null;
+  SLOTS.forEach(function(x){ if(x.k===curSlot) sl = x; });
+  S.gear[curSlot].push({ id:uid(), name:sl.n + " " + (S.gear[curSlot].length + 1), lv:1, st:zero() });
+  save(); renderGear(); renderSlots();
+});
+
+/* ---------- ĐỐI CHIẾU ---------- */
+function renderCmp(){
+  var box = document.getElementById("savedList");
+  if(!S.builds.length){
+    box.innerHTML = '<div class="empty">Chưa lưu build nào. Ở tab Sân đấu, chọn đồ rồi bấm “Lưu build”.</div>';
+    document.getElementById("cmpTable").innerHTML = "";
+    return;
+  }
+  var h = "";
+  S.builds.forEach(function(b){
+    h += '<div class="saved" data-id="' + b.id + '">'
+       +   '<div class="nmb">' + esc(b.name) + "</div>"
+       +   '<button class="bench' + (S.bench===b.id ? " on":"") + '">Mốc</button>'
+       +   '<button class="del">×</button>'
+       + "</div>";
+  });
+  box.innerHTML = h;
+  box.querySelectorAll(".saved").forEach(function(row){
+    var id = row.dataset.id;
+    row.querySelector(".bench").addEventListener("click", function(){
+      S.bench = (S.bench === id) ? null : id;
+      save(); renderCmp(); renderStats();
+    });
+    row.querySelector(".del").addEventListener("click", function(){
+      S.builds = S.builds.filter(function(x){ return x.id !== id; });
+      if(S.bench === id) S.bench = null;
+      save(); renderCmp(); renderStats();
+    });
+  });
+
+  /* bảng: cột đầu là build đang chọn, rồi tới các build đã lưu */
+  var cols = [{ name:"Đang chọn", total:totalOf(S.pick) }].concat(S.builds);
+  var t = "<tr><th>Chỉ số</th>";
+  cols.forEach(function(c){ t += "<th>" + esc(c.name) + "</th>"; });
+  t += "</tr>";
+
+  STATS.forEach(function(s){
+    var best = -Infinity;
+    cols.forEach(function(c){ if(c.total[s.k] > best) best = c.total[s.k]; });
+    t += "<tr><td>" + s.n + "</td>";
+    cols.forEach(function(c){
+      var v = c.total[s.k];
+      t += '<td class="' + (v===best && best>0 ? "best":"") + '">' + v + "</td>";
+    });
+    t += "</tr>";
+  });
+
+  var bestSum = -Infinity;
+  cols.forEach(function(c){ if(sumOf(c.total) > bestSum) bestSum = sumOf(c.total); });
+  t += '<tr class="tot"><td>Tổng</td>';
+  cols.forEach(function(c){
+    var v = sumOf(c.total);
+    t += '<td class="' + (v===bestSum && v>0 ? "best":"") + '">' + v + "</td>";
+  });
+  t += "</tr>";
+
+  document.getElementById("cmpTable").innerHTML = t;
+}
+
+/* ---------- khởi động ---------- */
+renderSlots();
+renderStats();
+renderGear();
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(function(){});
+}
+</script>
+</body>
+</html>
